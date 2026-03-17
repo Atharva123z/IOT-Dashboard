@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ultrasonic Distance Monitor</title>
+
+<style>
+  body {
+    margin: 0;
+    height: 100vh;
+    background: #0f172a;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-family: Arial, sans-serif;
+    color: white;
+  }
+
+  .card {
+    background: #1e293b;
+    padding: 35px 45px;
+    border-radius: 16px;
+    text-align: center;
+    box-shadow: 0 15px 40px rgba(0,0,0,0.6);
+  }
+
+  h1 {
+    margin-bottom: 10px;
+  }
+
+  .label {
+    opacity: 0.8;
+    font-size: 18px;
+  }
+
+  .value {
+    font-size: 52px;
+    font-weight: bold;
+    margin-top: 15px;
+    color: #38bdf8;
+  }
+
+  .status {
+    margin-top: 10px;
+    font-size: 14px;
+    opacity: 0.7;
+  }
+</style>
+</head>
+
+<body>
+
+<div class="card">
+  <h1>Ultrasonic Sensor</h1>
+  <div class="label">Distance</div>
+  <div id="distance" class="value">-- cm</div>
+  <div id="status" class="status">Connecting to Firebase...</div>
+</div>
+
+<!-- Firebase -->
+<script type="module">
+  import { initializeApp } from
+    "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+  import { getDatabase, ref, onValue } from
+    "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+  // 🔑 Your Firebase config
+  const firebaseConfig = {
+    apiKey: "AIzaSyCpJqny4BFU-lFfVjLiCNwmU8PZpyjm7d4",
+    authDomain: "esp-projects-92383.firebaseapp.com",
+    databaseURL: "https://esp-projects-92383-default-rtdb.firebaseio.com",
+    projectId: "esp-projects-92383"
+  };
+
+  // Init Firebase
+  const app = initializeApp(firebaseConfig);
+  const db = getDatabase(app);
+
+  // Ultrasonic path
+  const distanceRef = ref(db, "sensors/ultrasonic/distance");
+
+  // Live listener
+  onValue(distanceRef, (snapshot) => {
+    if (snapshot.exists()) {
+      const value = snapshot.val();
+      document.getElementById("distance").innerText =
+        value.toFixed(1) + " cm";
+      document.getElementById("status").innerText = "Live (Firebase)";
+    } else {
+      document.getElementById("distance").innerText = "-- cm";
+      document.getElementById("status").innerText = "No data";
+    }
+  });
+</script>
+
+</body>
+</html>

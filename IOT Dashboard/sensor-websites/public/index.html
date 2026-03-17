@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ESP32 Sensor Dashboard</title>
+
+<style>
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  body {
+    min-height: 100vh;
+    background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 50%, #0a0e27 100%);
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    color: #e2e8f0;
+    position: relative;
+    overflow-x: hidden;
+  }
+
+  /* Animated background particles */
+  body::before {
+    content: '';
+    position: fixed;
+    width: 100%;
+    height: 100%;
+    background-image: 
+      radial-gradient(circle at 20% 50%, rgba(59, 130, 246, 0.1) 0%, transparent 50%),
+      radial-gradient(circle at 80% 80%, rgba(139, 92, 246, 0.1) 0%, transparent 50%);
+    animation: pulse 8s ease-in-out infinite;
+    pointer-events: none;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 0.5; }
+    50% { opacity: 1; }
+  }
+
+  header {
+    padding: 40px 20px;
+    text-align: center;
+    background: rgba(15, 23, 42, 0.6);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid rgba(59, 130, 246, 0.2);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    position: relative;
+    z-index: 1;
+  }
+
+  header h1 {
+    font-size: 32px;
+    font-weight: 700;
+    background: linear-gradient(135deg, #60a5fa, #a78bfa);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 8px;
+    letter-spacing: -0.5px;
+  }
+
+  header p {
+    color: #94a3b8;
+    font-size: 15px;
+    font-weight: 400;
+  }
+
+  .status-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 12px;
+    padding: 6px 14px;
+    background: rgba(34, 197, 94, 0.1);
+    border: 1px solid rgba(34, 197, 94, 0.3);
+    border-radius: 20px;
+    font-size: 13px;
+    color: #86efac;
+  }
+
+  .status-dot {
+    width: 8px;
+    height: 8px;
+    background: #22c55e;
+    border-radius: 50%;
+    animation: blink 2s ease-in-out infinite;
+  }
+
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  .container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 40px 20px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 24px;
+  }
+
+  .card {
+    background: linear-gradient(135deg, rgba(30, 41, 59, 0.8), rgba(15, 23, 42, 0.9));
+    padding: 28px;
+    border-radius: 20px;
+    text-align: center;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    border: 1px solid rgba(59, 130, 246, 0.1);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, transparent, var(--card-color, #3b82f6), transparent);
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+
+  .card:hover::before {
+    opacity: 1;
+  }
+
+  .card:hover {
+    transform: translateY(-8px) scale(1.02);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6), 0 0 0 1px var(--card-color, #3b82f6);
+    border-color: var(--card-color, #3b82f6);
+  }
+
+  .card:active {
+    transform: translateY(-4px) scale(0.98);
+  }
+
+  /* Unique colors for each sensor */
+  .card:nth-child(1) { --card-color: #3b82f6; }
+  .card:nth-child(2) { --card-color: #10b981; }
+  .card:nth-child(3) { --card-color: #f59e0b; }
+  .card:nth-child(4) { --card-color: #ef4444; }
+  .card:nth-child(5) { --card-color: #8b5cf6; }
+  .card:nth-child(6) { --card-color: #fbbf24; }
+  .card:nth-child(7) { --card-color: #06b6d4; }
+  .card:nth-child(8) { --card-color: #ec4899; }
+
+  .card-icon {
+    width: 64px;
+    height: 64px;
+    margin: 0 auto 20px;
+    background: linear-gradient(135deg, var(--card-color, #3b82f6), transparent);
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 32px;
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    transition: all 0.3s;
+  }
+
+  .card:hover .card-icon {
+    transform: rotate(5deg) scale(1.1);
+    box-shadow: 0 8px 24px var(--card-color);
+  }
+
+  .card h2 {
+    font-size: 20px;
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: #f1f5f9;
+    letter-spacing: -0.3px;
+  }
+
+  .card p {
+    font-size: 14px;
+    color: #94a3b8;
+    font-weight: 400;
+    line-height: 1.5;
+  }
+
+  .card-badge {
+    display: inline-block;
+    margin-top: 12px;
+    padding: 4px 12px;
+    background: rgba(59, 130, 246, 0.1);
+    border: 1px solid rgba(59, 130, 246, 0.2);
+    border-radius: 12px;
+    font-size: 11px;
+    color: #93c5fd;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 600;
+  }
+
+  footer {
+    text-align: center;
+    padding: 30px 20px;
+    font-size: 13px;
+    color: #64748b;
+    border-top: 1px solid rgba(59, 130, 246, 0.1);
+    margin-top: 40px;
+    position: relative;
+    z-index: 1;
+  }
+
+  footer a {
+    color: #60a5fa;
+    text-decoration: none;
+    transition: color 0.2s;
+  }
+
+  footer a:hover {
+    color: #93c5fd;
+  }
+
+  /* Loading animation */
+  @keyframes shimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+  }
+
+  .card::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.05), transparent);
+    transform: translateX(-100%);
+    pointer-events: none;
+  }
+
+  .card:hover::after {
+    animation: shimmer 1.5s ease-in-out;
+  }
+
+  /* Responsive adjustments */
+  @media (max-width: 768px) {
+    header h1 {
+      font-size: 26px;
+    }
+
+    .grid {
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 16px;
+    }
+
+    .card {
+      padding: 20px;
+    }
+
+    .card-icon {
+      width: 48px;
+      height: 48px;
+      font-size: 24px;
+      margin-bottom: 14px;
+    }
+
+    .card h2 {
+      font-size: 16px;
+    }
+
+    .card p {
+      font-size: 12px;
+    }
+  }
+</style>
+</head>
+
+<body>
+
+<header>
+  <h1>ESP32 Sensor Dashboard</h1>
+  <p>Firebase-based Real-Time Monitoring System</p>
+  <div class="status-indicator">
+    <span class="status-dot"></span>
+    <span>System Online</span>
+  </div>
+</header>
+
+<div class="container">
+  <div class="grid">
+
+    <div class="card" onclick="go('ultrasonic')">
+      <div class="card-icon">📡</div>
+      <h2>Ultrasonic</h2>
+      <p>Distance Measurement</p>
+      <span class="card-badge">HC-SR04</span>
+    </div>
+
+    <div class="card" onclick="go('soil')">
+      <div class="card-icon">🌱</div>
+      <h2>Soil Moisture</h2>
+      <p>Soil Water Level</p>
+      <span class="card-badge">Analog</span>
+    </div>
+
+    <div class="card" onclick="go('gas')">
+      <div class="card-icon">💨</div>
+      <h2>Gas Sensor</h2>
+      <p>Alcohol & Gas Detection</p>
+      <span class="card-badge">MQ-3</span>
+    </div>
+
+    <div class="card" onclick="go('dht11')">
+      <div class="card-icon">🌡️</div>
+      <h2>DHT11</h2>
+      <p>Temperature & Humidity</p>
+      <span class="card-badge">Digital</span>
+    </div>
+
+    <div class="card" onclick="go('pressure')">
+      <div class="card-icon">⚡</div>
+      <h2>Pressure</h2>
+      <p>Barometric Pressure</p>
+      <span class="card-badge">BMP180</span>
+    </div>
+
+    <div class="card" onclick="go('light')">
+      <div class="card-icon">💡</div>
+      <h2>Light</h2>
+      <p>Ambient Light Intensity</p>
+      <span class="card-badge">BH1750</span>
+    </div>
+
+    <div class="card" onclick="go('sound')">
+      <div class="card-icon">🔊</div>
+      <h2>Sound</h2>
+      <p>Noise Level Detection</p>
+      <span class="card-badge">Analog</span>
+    </div>
+
+    <div class="card" onclick="go('pulse')">
+      <div class="card-icon">❤️</div>
+      <h2>Pulse</h2>
+      <p>Heart Rate Monitor</p>
+      <span class="card-badge">PPG</span>
+    </div>
+
+  </div>
+</div>
+
+<footer>
+  ESP32 + Firebase IoT Project | <a href="#">Documentation</a> | <a href="#">API</a>
+</footer>
+
+<script>
+  function go(sensor) {
+    // Add a small delay for visual feedback
+    event.currentTarget.style.transform = 'scale(0.95)';
+    setTimeout(() => {
+      window.location.href = "/" + sensor;
+    }, 150);
+  }
+
+  // Optional: Add keyboard navigation
+  document.addEventListener('keydown', (e) => {
+    const cards = document.querySelectorAll('.card');
+    const activeElement = document.activeElement;
+    const currentIndex = Array.from(cards).indexOf(activeElement);
+    
+    if (e.key === 'ArrowRight' && currentIndex < cards.length - 1) {
+      cards[currentIndex + 1].focus();
+    } else if (e.key === 'ArrowLeft' && currentIndex > 0) {
+      cards[currentIndex - 1].focus();
+    } else if (e.key === 'Enter' && activeElement.classList.contains('card')) {
+      activeElement.click();
+    }
+  });
+
+  // Make cards focusable for accessibility
+  document.querySelectorAll('.card').forEach(card => {
+    card.setAttribute('tabindex', '0');
+    card.setAttribute('role', 'button');
+  });
+</script>
+
+</body>
+</html>

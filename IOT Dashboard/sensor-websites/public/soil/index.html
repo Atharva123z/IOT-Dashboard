@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Soil Moisture Monitor</title>
+
+<style>
+  body {
+    margin: 0;
+    height: 100vh;
+    background: #052e16;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-family: Arial, sans-serif;
+    color: white;
+  }
+
+  .card {
+    background: #064e3b;
+    padding: 35px 45px;
+    border-radius: 16px;
+    text-align: center;
+    box-shadow: 0 15px 40px rgba(0,0,0,0.6);
+  }
+
+  h1 {
+    margin-bottom: 10px;
+  }
+
+  .value {
+    font-size: 48px;
+    font-weight: bold;
+    margin-top: 15px;
+    color: #4ade80;
+  }
+
+  .status {
+    margin-top: 10px;
+    font-size: 18px;
+  }
+</style>
+</head>
+
+<body>
+
+<div class="card">
+  <h1>Soil Moisture</h1>
+  <div id="soil" class="value">----</div>
+  <div id="status" class="status">Connecting to Firebase...</div>
+</div>
+
+<script type="module">
+  import { initializeApp } from
+    "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+  import { getDatabase, ref, onValue } from
+    "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyCpJqny4BFU-lFfVjLiCNwmU8PZpyjm7d4",
+    authDomain: "esp-projects-92383.firebaseapp.com",
+    databaseURL: "https://esp-projects-92383-default-rtdb.firebaseio.com",
+    projectId: "esp-projects-92383"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getDatabase(app);
+
+  // ✅ Soil moisture path
+  const soilRef = ref(db, "sensors/soil/moisture");
+
+  onValue(soilRef, (snapshot) => {
+    if (snapshot.exists()) {
+      const value = snapshot.val();
+      document.getElementById("soil").innerText = value;
+
+      if (value > 2500)
+        document.getElementById("status").innerText = "Soil is DRY";
+      else
+        document.getElementById("status").innerText = "Soil is WET";
+    } else {
+      document.getElementById("soil").innerText = "--";
+      document.getElementById("status").innerText = "No data";
+    }
+  });
+</script>
+
+</body>
+</html>
